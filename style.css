@@ -1,0 +1,61 @@
+body {
+  font-family: sans-serif;
+  max-width: 400px;
+  margin: 50px auto;
+  background-color: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+h1 {
+  text-align: center;
+}
+
+.input-area {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#todo-input,
+#due-datetime {
+  flex: 1;
+  padding: 8px;
+  font-size: 16px;
+  min-width: 140px;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid #ddd;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+li input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+li .task-content {
+  flex: 1;
+  min-width: 0;                /* ✅ はみ出し防止 */
+  overflow-x: auto;            /* ✅ 横スクロール許可 */
+  white-space: nowrap;         /* ✅ 改行禁止で一行にする */
+  scrollbar-width: none;       /* Firefoxのスクロールバー非表示 */
+}
+
+li .task-content::-webkit-scrollbar {
+  display: none;               /* Chrome等のスクロールバー非表示 */
+}
+
+li button {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  cursor: pointer;
+}

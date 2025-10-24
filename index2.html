@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My ToDoリスト</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      background-color: #f6f6f6;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 700px;
+      max-width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+    }
+
+    .input-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    input, button {
+      font-size: 16px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    input[type="datetime-local"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 8px 0;
+      padding: 10px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      background-color: #fff;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    li input[type="checkbox"] {
+      flex-shrink: 0;
+      transform: scale(1.2);
+    }
+
+    li .task-content {
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none;
+    }
+
+    li .task-content::-webkit-scrollbar {
+      display: none;
+    }
+
+    li.completed .task-title {
+      text-decoration: line-through;
+      color: gray;
+    }
+
+    li button {
+      flex-shrink: 0;
+      padding: 6px 10px;
+      background-color: #e74c3c;
+      border-radius: 6px;
+    }
+
+    li button:hover {
+      background-color: #c0392b;
+    }
+
+    /* 🟡 締切状態別カラー */
+    .deadline-normal { color: black; }
+    .deadline-soon { color: #e67e22; }
+    .deadline-warning { color: #f1c40f; }
+    .deadline-overdue { color: #e74c3c; }
+
+    /* 📱 スマホ対応 */
+    @media (max-width: 600px) {
+      .container {
+        width: 100%;
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+      }
+
+      .input-area {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      input[type="text"],
+      input[type="datetime-local"],
+      button {
+        width: 100%;
+        font-size: 1rem;
+      }
+
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      li .task-content {
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-x: hidden;
+      }
+
+      li button {
+        align-self: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>My ToDoリスト</h1>
+    <div class="input-area">
+      <input type="text" id="taskInput" placeholder="タスクを入力..." />
+      <input type="datetime-local" id="deadlineInput" />
+      <button id="addBtn">追加</button>
+    </div>
+    <div class="buttons">
+      <button id="sortCompletedBtn">完了済みを下に並べる</button>
+      <button id="toggleCompletedBtn">完了済みを非表示にする</button>
+    </div>
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    const taskInput = document.getElementById("taskInput");
+    const deadlineInput = document.getElementById("deadlineInput");
+    const addBtn = document.getElementById("addBtn");
+    const taskList = document.getElementById("taskList");
+    const sortCompletedBtn = document.getElementById("sortCompletedBtn");
+    const toggleCompletedBtn = document.getElementById("toggleCompletedBtn");
+
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    let sortCompletedLast = false;
+    let hideCompleted = false;
+
+    function saveTasks() {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    function compareTasks(a, b) {
+      if (sortCompletedLast) {
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1;
+        }
+      }
+      const da = new Date(a.deadline);
+      const db = new Date(b.deadline);
+      return da - db;
+    }
+
+    function getDeadlineClass(diffMs) {
+      if (isNaN(diffMs)) return "deadline-normal";
+      if (diffMs < 0) return "deadline-overdue";
+      if (diffMs < 24 * 60 * 60 * 1000) return "deadline-soon";
+      if (diffMs < 3 * 24 * 60 * 60 * 1000) return "deadline-warning";
+      return "deadline-normal";
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+      tasks.sort(compareTasks);
+
+      tasks.forEach((task, index) => {
+        if (hideCompleted && task.completed) return;
+
+        const li = document.createElement("li");
+        if (task.completed) li.classList.add("completed");
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = task.completed;
+        checkbox.addEventListener("change", () => {
+          task.completed = !task.completed;
+          saveTasks();
+          renderTasks();
+        });
+
+        const taskContent = document.createElement("div");
+        taskContent.className = "task-content";
+
+        const title = document.createElement("span");
+        title.textContent = task.title;
+        title.className = "task-title";
+
+        const small = document.createElement("small");
+        const deadline = new Date(task.deadline);
+        const now = new Date();
+        const diffMs = deadline - now;
+
+        let remainingText = "";
+        if (!isNaN(diffMs) && diffMs > 0) {
+          const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+          const mins = Math.floor((diffMs / (1000 * 60)) % 60);
+          if (days > 0) remainingText = `（あと${days}日${hours}時間）`;
+          else if (hours > 0) remainingText = `（あと${hours}時間${mins}分）`;
+          else remainingText = `（あと${mins}分）`;
+        } else {
+          remainingText = "（期限切れ）";
+        }
+
+        const deadlineClass = getDeadlineClass(diffMs);
+        small.classList.add(deadlineClass);
+        small.textContent = `締切: ${isNaN(deadline.getTime()) ? "未設定" : deadline.toLocaleString()} ${remainingText}`;
+
+        taskContent.appendChild(title);
+        taskContent.appendChild(document.createElement("br"));
+        taskContent.appendChild(small);
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "削除";
+        delBtn.addEventListener("click", () => {
+          tasks.splice(index, 1);
+          saveTasks();
+          renderTasks();
+        });
+
+        li.appendChild(checkbox);
+        li.appendChild(taskContent);
+        li.appendChild(delBtn);
+        taskList.appendChild(li);
+      });
+
+      sortCompletedBtn.textContent = sortCompletedLast ? "完了済みを上に戻す" : "完了済みを下に並べる";
+      toggleCompletedBtn.textContent = hideCompleted ? "完了済みを表示する" : "完了済みを非表示にする";
+    }
+
+    addBtn.addEventListener("click", () => {
+      const title = taskInput.value.trim();
+      const deadline = deadlineInput.value;
+      if (!title || !deadline) return alert("タスク名と締切日時を入力してください。");
+      tasks.push({ title, deadline, completed: false });
+      saveTasks();
+      taskInput.value = "";
+      deadlineInput.value = "";
+      renderTasks();
+    });
+
+    sortCompletedBtn.addEventListener("click", () => {
+      sortCompletedLast = !sortCompletedLast;
+      renderTasks();
+    });
+
+    toggleCompletedBtn.addEventListener("click", () => {
+      hideCompleted = !hideCompleted;
+      renderTasks();
+    });
+
+    setInterval(renderTasks, 60000);
+    renderTasks();
+  </script>
+</body>
+</html>
